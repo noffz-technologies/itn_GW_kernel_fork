@@ -1433,13 +1433,13 @@ config RANDOMIZE_KSTACK_OFFSET_DEFAULT
 	  boot state.
 
 config ARCH_OPTIONAL_KERNEL_RWX
-	def_bool n
+	def_bool y
 
 config ARCH_OPTIONAL_KERNEL_RWX_DEFAULT
 	def_bool n
 
 config ARCH_HAS_STRICT_KERNEL_RWX
-	def_bool n
+	def_bool y
 
 config STRICT_KERNEL_RWX
 	bool "Make kernel text and rodata read-only" if ARCH_OPTIONAL_KERNEL_RWX
