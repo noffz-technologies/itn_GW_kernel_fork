@@ -16,3 +16,100 @@ several of them using the reStructuredText markup notation.
 Please read the Documentation/process/changes.rst file, as it contains the
 requirements for building and running the kernel, and information about
 the problems which may result by upgrading your kernel.
+
+# Build and install kernel
+
+https://trac.gateworks.com/wiki/linux/kernel
+
+## Change log
+- 6.6.31-vanilla 
+  - default mainline 6.6.31
+- 6.6.31-1.0.1
+  - 6.6.31 with 599a28fa9ecd98f7c2937e4215a7788403d1cfd6 backport
+- 6.6.35-vanilla
+  - default mainline 6.6.35 
+
+## Checkout linux stable
+```
+git clone git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git
+cd linux
+git checkout <version eg.: v6.6.31>
+```
+
+## Clean repo if needed
+```
+git reset --hard HEAD
+git clean -fdx
+```
+
+## Cherry pick if needed
+THis is the fix for BT-SIG test  
+From 6.6.35 we need 599a28fa9ecd98f7c2937e4215a7788403d1cfd6 commit.  
+Bluetooth: L2CAP: Fix rejecting L2CAP_CONN_PARAM_UPDATE_REQ
+
+## Install stuff
+```
+apt install build-essential ncurses-dev bc u-boot-tools liblzo2-dev lzop git bison flex openssl libssl-dev gcc-aarch64-linux-gnu
+```
+
+## Set env variables
+```
+export ARCH=arm64
+export CROSS_COMPILE=aarch64-linux-gnu-
+export INSTALL_PATH=install
+export INSTALL_MOD_STRIP=1
+export LOADADDR=0x40200000
+```
+
+## Clear config
+```
+make distclean
+```
+
+## Config for GW board
+```
+wget -O arch/x86/configs/imx8m_venice_defconfig https://github.com/Gateworks/linux-venice/blob/v6.6.8-venice-mm6108/arch/arm64/configs/imx8m_venice_defconfig
+make imx8m_venice_defconfig
+```
+
+## Manual config
+```
+make menuconfig
+```
+- Netwokring support
+  - Wireless
+    - Onuc sfg
+- Device drivers
+  - Network device support
+    - Wireless LAN
+      - Atheros dynamic user regularotry
+      - Atheros dynamic user regulatory testing
+      - Qualcomm Technologies 802.11ax (legyen bekapcsolva)
+
+## Build kernel
+```
+make -j$(nproc) Image modules dtbs
+```
+
+## Set up stuff
+```
+mkdir -p $INSTALL_PATH/boot
+make modules_install INSTALL_MOD_PATH=$INSTALL_PATH # install modules
+make headers_install INSTALL_HDR_PATH=$INSTALL_PATH/usr # install headers
+cp arch/arm64/boot/Image arch/arm64/boot/dts/freescale/imx8*venice*.dtb* $INSTALL_PATH/boot # install kernel and dtbs
+gzip -fk $INSTALL_PATH/boot/Image
+mkimage -f auto -A $ARCH -O linux -T kernel -C gzip -n "Kernel" \
+  -a $LOADADDR -e $LOADADDR -d $INSTALL_PATH/boot/Image.gz $INSTALL_PATH/boot/kernel.itb # FIT image
+wget https://raw.githubusercontent.com/Gateworks/bsp-venice/master/boot.scr -O boot.scr
+mkimage -A $ARCH -T script -C none -d boot.scr $INSTALL_PATH/boot/boot.scr # boot script
+```
+## Export kernel to img
+```
+tar -C $INSTALL_PATH --owner=0 --group=0 -cvJf linux.tar.xz .
+```
+
+## install
+```
+tar -C / -xvf linux.tar.xz --keep-directory-symlink
+```
+
